@@ -1,4 +1,5 @@
 import './bootstrap';
+import 'element-plus/dist/index.css'
 import '../css/app.css';
 
 import { createApp, h } from 'vue';
