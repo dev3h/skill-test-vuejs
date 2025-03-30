@@ -9,4 +9,9 @@ class File extends Model
 {
     use SoftDeletes;
     protected $guarded = [];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'photo_by');
+    }
 }

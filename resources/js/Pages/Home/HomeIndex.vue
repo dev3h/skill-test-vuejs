@@ -1,22 +1,22 @@
 <template>
     <div class="bg-[#f9fbfc] min-h-screen flex items-center">
-        <div class="container mx-auto px-5">
-            <div class="flex relative shadow-sm shadow-gray-300 border">
-                <div class="p-8 w-[250px] absolute top-0 left-0 h-full overflow-y-scroll">
-                  <input type="file" @change="handleChange"/>
+        <div class="container mx-auto px-5 min-h-[500px]">
+            <div class="flex relative shadow-sm shadow-gray-300 border h-full">
+                <div class="p-8 w-[250px]">
                     <el-button type="primary" size="large">Import documents</el-button>
                     <div class="mt-9">
                         <div class="flex justify-between">
                             <span>Storage</span>
                             <span class="underline">Change plan</span>
                         </div>
+                      
                         <div class="w-full h-3 rounded-[50px] bg-gray-200 my-2 storage-line relative"></div>
-                        <span><span>6%</span> used of 2GB</span>
+                        <span><span>{{ usedPercentage }}%</span> used of 2GB</span>
                     </div>
                     <div class="mt-9">
                         <span>Search</span>
                         <div>
-                            <input type="text" placeholder="e.g. image.png">
+                            <input v-model="search" @input="filterData" type="text" placeholder="e.g. image.png">
                         </div>
                     </div>
                     <div class="mt-9 mb-3">
@@ -27,8 +27,11 @@
                     </div>
                     <div class="max-h-[200px] overflow-y-scroll">
                         <el-tree
-                            :data="data"
-                            :props="defaultProps"
+                            :default-expanded-keys="[1]"
+                            :current-node-key="currentNodeKey"
+                            :data="folders"
+                            node-key="id"
+                            highlight-current
                             @node-click="handleNodeClick"
                         />
                     </div>
@@ -38,13 +41,13 @@
                             <span>Select all</span>
                         </div>
                         <el-checkbox-group v-model="checkList" class="flex flex-col">
-                            <el-checkbox label="Option A" value="Value A" />
-                            <el-checkbox label="Option B" value="Value B" />
+                            <el-checkbox label="All" value="all" />
+                            <el-checkbox v-for="member in members" :key="member?.id" :label="member?.name" :value="member?.id" />
                         </el-checkbox-group>
                     </div>
                 </div>
-                <div class="flex-1 ml-[300px] overflow-x-scroll pt-8">
-                    <el-table :data="tableData">
+                <div class="flex-1 overflow-x-scroll pt-8">
+                    <el-table :data="files">
                         <el-table-column type="selection" />
                         <el-table-column label="" property="url">
                             <template #default="scope">
@@ -52,7 +55,7 @@
                             </template>
                         </el-table-column>
                         <el-table-column property="name" label="Name" show-overflow-tooltip />
-                        <el-table-column property="dimmension" label="Dimmension" />
+                        <el-table-column property="dimension" label="Dimension" />
                         <el-table-column property="size" label="Size" />
                     </el-table>
                 </div>
@@ -63,97 +66,83 @@
 </template>
 
 <script setup>
+import axios from '@/config/axios';
 import { ElButton, ElTree, ElCheckboxGroup, ElCheckbox, ElTable, ElTableColumn } from 'element-plus';
-import { ref } from 'vue'
+import { onMounted, ref, watch, watchEffect, computed } from 'vue'
+import debounce from 'lodash.debounce'
+
+function transformFolders(folders) {
+  return folders.map(folder => ({
+    ...folder,
+    label: folder.name,
+    children: folder.children ? transformFolders(folder.children) : []
+  }));
+}
+const folders = ref(null);
+const members = ref(null);
+const currentNodeKey = ref(1);
+const files = ref(null);
+const search = ref(null);
+const totalSize = ref(0);
+const TOTAL_STORAGE_KB = 2 * 1024 * 1024;
 
 const handleNodeClick = (data) => {
-  console.log(data)
+  currentNodeKey.value = data.id
+  fetchFiles()
 }
-const handleChange = e => {
-  const file = event.target.files[0];
-  console.log(file)
+const usedPercentage = computed(() => {
+  return ((totalSize.value / TOTAL_STORAGE_KB) * 100).toFixed(2);
+});
+
+watchEffect(async() => {
+  try {
+    const response = await axios.get(route('api.folder.index'));
+    if (response?.data?.status === 200) {
+      const dataRes = response?.data?.data
+      folders.value = transformFolders(dataRes)
+    }
+  } catch(e) {
+    console.log(e)
+  }
+})
+watchEffect(async() => {
+  try {
+    const response = await axios.get(route('api.user.index'));
+    if (response?.data?.status === 200) {
+      members.value = response?.data?.data
+    }
+  } catch(e) {
+    console.log(e)
+  }
+})
+const fetchFiles = async() => {
+  try {
+    const response = await axios.get(route('api.folder.show-file', {
+      id: currentNodeKey.value
+    }), {
+      params: {
+        s: search.value,
+        photo_by: checkList.value
+      }
+    });
+    if (response?.data?.status === 200) {
+      files.value = response?.data?.data
+      totalSize.value = files.value.reduce((sum, file) => sum + (+file?.size || 0), 0);
+    }
+  } catch(e) {
+    console.log(e)
+  }
 }
+onMounted(() => fetchFiles())
 
+const checkList = ref(['all'])
 
-const checkList = ref(['Value selected and disabled', 'Value A'])
-const data = [
-  {
-    label: 'Level one 1',
-    children: [
-      {
-        label: 'Level two 1-1',
-        children: [
-          {
-            label: 'Level three 1-1-1',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Level one 2',
-    children: [
-      {
-        label: 'Level two 2-1',
-        children: [
-          {
-            label: 'Level three 2-1-1',
-          },
-        ],
-      },
-      {
-        label: 'Level two 2-2',
-        children: [
-          {
-            label: 'Level three 2-2-1',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Level one 3',
-    children: [
-      {
-        label: 'Level two 3-1',
-        children: [
-          {
-            label: 'Level three 3-1-1',
-          },
-        ],
-      },
-      {
-        label: 'Level two 3-2',
-        children: [
-          {
-            label: 'Level three 3-2-1',
-          },
-        ],
-      },
-    ],
-  },
-]
-
-const tableData = [
-  {
-    url: '',
-    name: 'abc.jpg',
-    dimmension: '2000x2000',
-    size: '763.3kb',
-  },
-  {
-    url: '',
-    name: 'abc.jpg',
-    dimmension: '2000x2000',
-    size: '763.3kb',
-  },
-  {
-    url: '',
-    name: 'abc.jpg',
-    dimmension: '2000x2000',
-    size: '763.3kb',
-  },
-]
+const filterData = debounce(function () {
+      fetchFiles()
+    }, 500)
+watch(checkList, () => {
+  fetchFiles()
+})
 </script>
 <style scoped>
 .storage-line::before {
@@ -161,7 +150,7 @@ const tableData = [
     position: absolute;
     top: 0;
     left: 0;
-    width: 6%;
+    width: v-bind(usedPercentage + '%');
     height: 100%;
     background-color: #3b82f6;
     border-radius: 50px;

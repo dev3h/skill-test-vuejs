@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Backend\FolderController;
+use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Frontend\HomeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -25,3 +27,9 @@ use Inertia\Inertia;
 // });
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::prefix('api')->as('api.')->group(function () {
+    Route::get('/folders', [FolderController::class, 'index'])->name('folder.index');
+    Route::get('/folder/{folder}/files', [FolderController::class, 'showFile'])->name('folder.show-file');
+    Route::get('/members', [UserController::class, 'index'])->name('user.index');
+});
