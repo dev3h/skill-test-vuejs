@@ -1,8 +1,9 @@
 <template>
-    <div class="bg-[#f9fbfc] min-h-screen">
-        <div class="container mx-auto py-[100px]">
-            <div class="h-[500px] shadow-md flex relative">
+    <div class="bg-[#f9fbfc] min-h-screen flex items-center">
+        <div class="container mx-auto px-5">
+            <div class="flex relative shadow-sm shadow-gray-300 border">
                 <div class="p-8 w-[250px] absolute top-0 left-0 h-full overflow-y-scroll">
+                  <input type="file" @change="handleChange"/>
                     <el-button type="primary" size="large">Import documents</el-button>
                     <div class="mt-9">
                         <div class="flex justify-between">
@@ -67,6 +68,10 @@ import { ref } from 'vue'
 
 const handleNodeClick = (data) => {
   console.log(data)
+}
+const handleChange = e => {
+  const file = event.target.files[0];
+  console.log(file)
 }
 
 
